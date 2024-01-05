@@ -1,69 +1,70 @@
 import User from '../models/user.js';
 
-export const createUser =async (req, res) =>{
+export const createUser = async (req, res) => {
     try {
-        const user = new User(req.body)
-        await user.save()
-        res.status(200).send(user)
+        const user = new User(req.body);
+        await user.save({ runValidators: true });
+        res.status(200).send(user);
     } catch (error) {
-        console.log('error',error);
+        console.log('error', error);
     }
-}
+};
 
-export const getAllUsers = async (req, res) =>{
+export const getAllUsers = async (req, res) => {
     try {
         const users = await User.find()
-        res.status(200).send(users)
+        res.status(200).send(users);
     } catch (error) {
         console.log(error.message);
+        res.status(500).json({ error: error.message });
     }
-}
+};
 
-export const findUserById = async (req, res) =>{
-    const {id} = req.params
+export const findUserById = async (req, res) => {
+    const { id } = req.params;
     try {
         const user = await User.findById(id)
-        res.send(user)
+        res.send(user);
     } catch (error) {
-        console.log('error');
+        console.log('error', error);
+        res.status(500).json({ error: error.message });
     }
-}
+};
 
 export const updateUser = async (req, res) => {
     const { id } = req.params;
     try {
-        const updatedUser = await User.findByIdAndUpdate(id, req.body, { new: true });
+        const updatedUser = await User.findByIdAndUpdate(id, req.body, { new: true, runValidators: true })
         res.status(200).send(updatedUser);
     } catch (error) {
         res.status(500).send({ error: error.message });
     }
-}
+};
 
-
-export const deleteUser = async(req,res)=>{
-    const {id} = req.params;
+export const deleteUser = async (req, res) => {
+    const { id } = req.params;
     try {
-        const deletedUser = await User.findByIdAndDelete(id);
-        res.status(200).send(deletedUser)
+        const deletedUser = await User.findByIdAndDelete(id)
+        res.status(200).send(deletedUser);
     } catch (error) {
-        
+        res.status(500).send({ error: error.message });
     }
-}
+};
 
 export const depositUser = async (req, res) => {
     const { id } = req.params;
-    const { cash } = req.body; 
+    const { cash } = req.body;
 
     try {
-        const user = await User.findById(id);
+        const user = await User.findByIdAndUpdate(id, { $inc: { cash } }, { new: true, runValidators: true })
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        user.cash += cash; 
+        user.cash += cash;
 
-        const updatedUser = await user.save();
+        const updatedUser = await user.save({ runValidators: true });
 
         res.status(200).json({ message: 'Deposit successful', user: updatedUser });
     } catch (error) {
@@ -73,10 +74,10 @@ export const depositUser = async (req, res) => {
 
 export const withdrawUser = async (req, res) => {
     const { id } = req.params;
-    const { cash } = req.body; 
+    const { cash } = req.body;
 
     try {
-        const user = await User.findById(id);
+        const user = await User.findById(id)
 
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
@@ -86,9 +87,9 @@ export const withdrawUser = async (req, res) => {
             return res.status(400).json({ message: 'Insufficient funds' });
         }
 
-        user.cash -= cash; 
+        user.cash -= cash;
 
-        const updatedUser = await user.save();
+        const updatedUser = await user.save({ runValidators: true });
 
         res.status(200).json({ message: 'Withdrawal successful', user: updatedUser });
     } catch (error) {
@@ -96,28 +97,27 @@ export const withdrawUser = async (req, res) => {
     }
 };
 
-
 export const transferUser = async (req, res) => {
     const { from, id } = req.params;
     const { cash } = req.body;
 
     try {
-        const sender = await User.findById(from);
-        const receiver = await User.findById(id);
+        const sender = await User.findById(from)
+        const receiver = await User.findById(id)
 
         if (!sender || !receiver) {
-            return res.status(404).json({ message: "User not found" });
+            return res.status(404).json({ message: 'User not found' });
         }
 
         if (sender.cash < cash) {
-            return res.status(400).json({ message: "Insufficient funds for transfer" });
+            return res.status(400).json({ message: 'Insufficient funds for transfer' });
         }
 
         sender.cash -= cash;
         receiver.cash += cash;
 
-        await sender.save();
-        await receiver.save();
+        await sender.save({ runValidators: true });
+        await receiver.save({ runValidators: true });
 
         res.status(200).json({ message: 'Transfer successful' });
     } catch (error) {
@@ -133,7 +133,7 @@ export const filterUsers = async (req, res) => {
             return res.status(400).json({ message: 'Invalid or missing cash parameter' });
         }
 
-        const cashFound = await User.find({ cash: { $gte: parseInt(cash) } });
+        const cashFound = await User.find({ cash: { $gte: parseInt(cash) } }).exec();
         res.send(cashFound);
     } catch (error) {
         res.status(500).json({ error: error.message });
